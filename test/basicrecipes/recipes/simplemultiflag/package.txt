@@ -1,0 +1,1 @@
+@TEST_DIR@/libsimplemultiflag -DCARBIN_FLAG1=On -DCARBIN_FLAG2=On

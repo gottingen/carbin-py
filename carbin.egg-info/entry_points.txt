@@ -1,0 +1,3 @@
+[console_scripts]
+carbin = carbin.cli:cli
+

@@ -1,0 +1,3 @@
+# Initial comment
+simple:../libsimple --test # the simple lib
+# Trailing comment

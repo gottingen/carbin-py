@@ -1,0 +1,5 @@
+recursive-include carbin *.py
+recursive-include carbin/cmake *.cmake
+include README
+include LICENSE
+include requirements.txt
