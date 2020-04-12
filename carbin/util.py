@@ -219,6 +219,7 @@ def download_to(url, download_dir, insecure=False):
         raise BuildError("Download failed for: {0}".format(url))
     return file
 
+
 def transfer_to(f, dst, copy=False):
     if USE_SYMLINKS and not copy: return symlink_to(f, dst)
     else: return copy_to(f, dst)
@@ -330,6 +331,24 @@ def actual_path(path, start=None):
     if os.path.isabs(path):
         return path
     return os.path.normpath(os.path.join(start or os.getcwd(), os.path.expanduser(path)))
+
+def down_carbin_cmake():
+    url = "https://github.com/gottingen/carbin-cmake/archive/master.zip"
+    p = os.path.join(os.path.curdir, "carbin/carbin")
+    tp = os.path.curdir
+    f = retrieve_url(url, p)
+    extract_ar(archive = f, dst = p)
+    cp = os.path.join(p, "carbin-cmake-master")
+    if not os.path.exists(cp):
+       print " download carbin cmake template error"
+       exit(1)
+    files = os.listdir(cp)
+    for file in files:
+        if not file == "README.md" and not file == "LICENSE" and not file == ".gitignore":
+            print file
+            copy_to(os.path.join(cp,file), tp)
+
+
 
 class Commander:
     def __init__(self, paths=None, env=None, verbose=False):

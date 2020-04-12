@@ -74,6 +74,7 @@ def init_command(prefix, toolchain, cc, cxx, cflags, cxxflags, ldflags, std, def
         ldflags=ldflags, 
         std=std, 
         defines=defines)
+    util.down_carbin_cmake()
 
 @cli.command(name='install')
 @use_prefix
