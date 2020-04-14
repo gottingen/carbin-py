@@ -124,12 +124,9 @@ class CarbinPrefix:
         append_ = cmake_append
         yield set_('CARBIN_PREFIX', self.prefix)
         yield set_('CMAKE_PREFIX_PATH', self.prefix)
-        yield if_('${CMAKE_VERSION} VERSION_LESS "3.6.0"',
+        yield if_('${CMAKE_VERSION} VERSION_GREATER "2.8.0"',
             ['include_directories(SYSTEM ${CARBIN_PREFIX}/include)'],
-            else_(
-                set_('CMAKE_CXX_STANDARD_INCLUDE_DIRECTORIES', '${CARBIN_PREFIX}/include'),
-                set_('CMAKE_C_STANDARD_INCLUDE_DIRECTORIES', '${CARBIN_PREFIX}/include')
-            )
+            ['link_directories(${CARBIN_PREFIX}/lib)']
         )
         if toolchain: yield ['include({})'.format(util.quote(os.path.abspath(toolchain)))]
         yield if_('CMAKE_CROSSCOMPILING',
@@ -165,7 +162,8 @@ class CarbinPrefix:
 
 
     def get_path(self, *paths):
-        return os.path.join(self.prefix, *paths)
+        p = os.path.join(self.prefix, *paths)
+        return p
 
     def get_private_path(self, *paths):
         return self.get_path('carbin', *paths)
@@ -191,7 +189,8 @@ class CarbinPrefix:
         if tmp: shutil.rmtree(d, ignore_errors=True)
 
     def get_package_directory(self, *dirs):
-        return self.get_private_path('pkg', *dirs)
+        p = self.get_private_path('pkg', *dirs)
+        return p
 
     def get_unlink_directory(self, *dirs):
         return self.get_private_path('unlink', *dirs)
@@ -300,6 +299,7 @@ class CarbinPrefix:
         pkg_dir = self.get_package_directory(pb.to_fname())
         unlink_dir = self.get_unlink_directory(pb.to_fname())
         install_dir = self.get_package_directory(pb.to_fname(), 'install')
+
         # If its been unlinked, then link it in
         if os.path.exists(unlink_dir):
             if update: shutil.rmtree(unlink_dir)
@@ -307,10 +307,14 @@ class CarbinPrefix:
                 self.link(pb)
                 self.write_parent(pb, track=track)
                 return "Linking package {}".format(pb.to_name())
-        if os.path.exists(pkg_dir): 
+        if os.path.exists(pkg_dir):
+            print (pkg_dir) 
             self.write_parent(pb, track=track)
-            if update: self.remove(pb)
-            else: return "Package {} already installed".format(pb.to_name())
+            if update: 
+                self.remove(pb)
+            else:
+                print (pkg_dir) 
+                return "Package {} already installed".format(pb.to_name())
         with self.create_builder(uuid.uuid4().hex, tmp=True) as builder:
             # Fetch package
             src_dir = builder.fetch(pb.pkg_src.url, pb.hash, (pb.cmake != None), insecure=insecure)
@@ -323,6 +327,8 @@ class CarbinPrefix:
                     os.rename(target, os.path.join(src_dir, builder.cmake_original_file))
                 shutil.copyfile(pb.cmake, target)
             # Configure and build
+            print ("install dir")
+            print (install_dir)
             builder.configure(src_dir, defines=pb.define, generator=generator, install_prefix=install_dir, test=test, variant=pb.variant)
             builder.build(variant=pb.variant)
             # Run tests if enabled

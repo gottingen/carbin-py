@@ -340,12 +340,12 @@ def down_carbin_cmake():
     extract_ar(archive = f, dst = p)
     cp = os.path.join(p, "carbin-cmake-master")
     if not os.path.exists(cp):
-       print " download carbin cmake template error"
+       print ("download carbin cmake template error")
        exit(1)
     files = os.listdir(cp)
     for file in files:
         if not file == "README.md" and not file == "LICENSE" and not file == ".gitignore":
-            print file
+            print (file)
             copy_to(os.path.join(cp,file), tp)
 
 
