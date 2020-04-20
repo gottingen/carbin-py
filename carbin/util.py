@@ -1,4 +1,4 @@
-import click, os, sys, shutil, json, six, hashlib, ssl
+import click, os, sys, shutil, json, six, hashlib, ssl, git
 
 if sys.version_info[0] < 3:
     try:
@@ -201,6 +201,7 @@ class CarbinURLOpener(request.FancyURLopener):
 
 def download_to(url, download_dir, insecure=False):
     name = url.split('/')[-1]
+    name = name.split('?')[0]
     file = os.path.join(download_dir, name)
     click.echo("Downloading {0}".format(url))
     bar_len = 1000
@@ -238,6 +239,54 @@ def retrieve_url(url, dst, copy=False, insecure=False, hash=None):
         else:
             raise BuildError("Hash doesn't match for {0}: {1}".format(url, hash))
     return f
+
+
+
+def check_from_git(ps, version, dst):
+    dir = ps.name
+    dir = dir.replace('/','_')
+    local_path = os.path.join(dst, dir)
+    click.echo("clone from git:{0} ...".format(ps.url))
+    bar_len = 1000
+    with click.progressbar(length=bar_len, width=70, label='compressing') as bar:
+        def hook(op_code, cur_count, max_count=None, message=''):
+            if not max_count:
+                click.echo("\n clone from git error ...\n")
+                exit(1)
+            percent = int(cur_count*bar_len/max_count)
+            if op_code & git.remote.RemoteProgress.RECEIVING and op_code & git.remote.RemoteProgress.BEGIN:
+                bar.pos = bar_len
+                bar.update(0)
+                click.echo("\ncompressing done ...\n")
+                bar.label = 'receiving'
+                bar.pos = percent
+                bar.update(0)
+            elif op_code & git.remote.RemoteProgress.RESOLVING and op_code & git.remote.RemoteProgress.BEGIN:
+                bar.label = 'resolving'
+                bar.pos = percent
+                bar.update(0)
+            elif op_code & git.remote.RemoteProgress.COMPRESSING and op_code & git.remote.RemoteProgress.END:
+                bar.pos = percent
+                bar.update(0)
+            elif op_code & git.remote.RemoteProgress.RESOLVING and op_code & git.remote.RemoteProgress.END:
+                bar.pos = percent
+                bar.update(0)
+                click.echo("\nresolving done ...\n")
+            elif op_code & git.remote.RemoteProgress.RECEIVING and op_code & git.remote.RemoteProgress.END:
+                bar.pos = percent
+                bar.update(0)
+                click.echo("\nreceiving done ...\n")
+            else:
+                bar.pos = percent
+                bar.update(0)
+                            
+
+
+    clone = git.Repo.clone_from(ps.url,local_path, progress=hook)
+    git.remote.Remote.push
+    git.remote.RemoteProgress
+    click.echo("\ncheckout {0} from repo {1}".format(ps.version, ps.name))
+    clone.git.checkout(version)
 
 def extract_ar(archive, dst, *kwargs):
     if sys.version_info[0] < 3 and archive.endswith('.xz'):

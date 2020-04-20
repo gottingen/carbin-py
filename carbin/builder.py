@@ -41,8 +41,13 @@ class Builder:
             if line.startswith(six.b('... ')):
                 yield line[4:]
 
-    def fetch(self, url, hash=None, copy=False, insecure=False):
-        self.prefix.log("fetch:", url)
+    def fetch(self, ps, hash=None, copy=False, insecure=False):
+        self.prefix.log("fetch:", ps.url)
+        url = ps.url
+        if ps.get_type():
+            util.check_from_git(ps, ps.version, self.top_dir)
+            return next(util.get_dirs(self.top_dir))
+
         if insecure: url = url.replace('https', 'http')
         f = util.retrieve_url(url, self.top_dir, copy=copy, insecure=insecure, hash=hash)
         if os.path.isfile(f):

@@ -27,6 +27,27 @@ def parse_alias(s):
     else: return parse_deprecated_alias(s)
 
 @params(s=six.string_types)
+def parse_git_alias(s):
+    i = s.find(',')
+    if i > 0: return s[0:i], s[i+1:]
+    splitter = '/'
+    #https://hostname/group/project.git name = group_project
+    if s.startswith('https'):
+        tmp =s[8:]
+        x = tmp.split('/')
+        name = x[1] + splitter + x[2]
+        i = name.find(".")
+        name = name[0:i]
+        return name, s
+    else: #git@hostname:group/project.git name = group_project
+        i = s.find(':')
+        tmp = s[i+1:]
+        j = tmp.find('.')
+        name = tmp[0:j]
+        return name, s
+
+
+@params(s=six.string_types)
 def parse_src_name(url, default=None):
     x = url.split('@')
     p = x[0]
@@ -37,6 +58,35 @@ def parse_src_name(url, default=None):
             p = ps[0]
     v = default
     if len(x) > 1: v = x[1]
+    return (p, v)
+
+@params(s=six.string_types)
+def parse_git_name(url, default=None):
+    if url.startswith('https'):
+        return parse_git_https(url, default)
+    else:
+        return parse_git_ssh(url, default)
+    
+
+@params(s=six.string_types)
+def parse_git_ssh(url, default=None):
+    x = url.split('@')
+    if len(x) == 2:
+        p = url
+        v = default
+        return (p,v)
+    else:
+        p = x[0] + '@' + x[1]
+        v = x[2]
+        return (p, v)
+
+@params(s=six.string_types)
+def parse_git_https(url, default=None):
+    x = url.split('@')
+    p = x[0]
+    v = default
+    if len(x) > 1:
+        v = x[1]
     return (p, v)
 
 def cmake_set(var, val, quote=True, cache=None, description=None):
@@ -222,11 +272,20 @@ class CarbinPrefix:
         if name is None: name = p
         return PackageSource(name=name, url=url)
 
+    def parse_src_git(self, name, url):
+        p, v = parse_git_name(url, 'master')
+        return PackageSource(name=name, url=p, ftype="git", fv=v)
+
     @returns(PackageSource)
     @params(pkg=PACKAGE_SOURCE_TYPES)
     def parse_pkg_src(self, pkg, start=None, no_recipe=False):
         if isinstance(pkg, PackageSource): return pkg
         if isinstance(pkg, PackageBuild): return self.parse_pkg_src(pkg.pkg_src, start)
+        if '.git' in pkg:
+            name, url = parse_git_alias(pkg)
+            self.log('parse_pkg_src:', name, url, pkg)
+            return self.parse_src_git(name,url)
+
         name, url = parse_alias(pkg)
         self.log('parse_pkg_src:', name, url, pkg)
         if '://' not in url:
@@ -308,16 +367,14 @@ class CarbinPrefix:
                 self.write_parent(pb, track=track)
                 return "Linking package {}".format(pb.to_name())
         if os.path.exists(pkg_dir):
-            print (pkg_dir) 
             self.write_parent(pb, track=track)
             if update: 
                 self.remove(pb)
             else:
-                print (pkg_dir) 
                 return "Package {} already installed".format(pb.to_name())
         with self.create_builder(uuid.uuid4().hex, tmp=True) as builder:
             # Fetch package
-            src_dir = builder.fetch(pb.pkg_src.url, pb.hash, (pb.cmake != None), insecure=insecure)
+            src_dir = builder.fetch(pb.pkg_src, pb.hash, (pb.cmake != None), insecure=insecure)
             # Install any dependencies first
             self.install_deps(pb, src_dir, test=test, test_all=test_all, generator=generator, insecure=insecure)
             # Setup cmake file
@@ -327,8 +384,6 @@ class CarbinPrefix:
                     os.rename(target, os.path.join(src_dir, builder.cmake_original_file))
                 shutil.copyfile(pb.cmake, target)
             # Configure and build
-            print ("install dir")
-            print (install_dir)
             builder.configure(src_dir, defines=pb.define, generator=generator, install_prefix=install_dir, test=test, variant=pb.variant)
             builder.build(variant=pb.variant)
             # Run tests if enabled

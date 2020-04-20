@@ -9,11 +9,13 @@ def decode_url(url):
     return base64.urlsafe_b64decode(str(s)).decode('utf-8')
 
 class PackageSource:
-    def __init__(self, name=None, url=None, fname=None, recipe=None):
+    def __init__(self, name=None, url=None, ftype=None, fv=None, fname=None, recipe=None):
         self.name = name
         self.url = url
         self.fname = fname
         self.recipe = recipe
+        self.type = ftype
+        self.version = fv
 
     def to_name(self):
         return self.name or self.url or self.to_fname()
@@ -30,6 +32,11 @@ class PackageSource:
         if self.url.startswith('file://'):
             return self.url[7:] # Remove "file://"
         raise TypeError()
+    def get_type(self):
+        return self.type
+
+    def get_version(self):
+        return self.version
 
 
 def fname_to_pkg(fname):

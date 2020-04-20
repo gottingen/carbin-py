@@ -1,3 +1,5 @@
 click>=6.6
 # PyYAML
 six>=1.10
+#git
+gitpython>=2.1.15
